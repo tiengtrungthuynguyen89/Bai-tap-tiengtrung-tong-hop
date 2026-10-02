@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bộ Công Cụ Tạo Bài Tập Tiếng Trung</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-content { display: none; width: 100%; height: calc(100vh - 64px); border: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans flex flex-col h-screen overflow-hidden">
+
+    <header class="bg-white shadow-md border-b border-slate-200 z-10 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+            <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span>📚</span> Bộ Công Cụ Tiếng Trung
+            </h1>
+            
+            <nav class="flex space-x-1 sm:space-x-2">
+                <button onclick="switchTab('repo')" id="tab-btn-repo" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200">🗂️ Kho Từ Vựng</button>
+                <button onclick="switchTab('pinyin')" id="tab-btn-pinyin" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🎯 Tìm Pinyin</button>
+                <button onclick="switchTab('muc-tieu')" id="tab-btn-muc-tieu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🔍 Tìm Từ Mục Tiêu</button>
+                <button onclick="switchTab('noi-tu')" id="tab-btn-noi-tu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🔗 Nối Từ & Pinyin</button>
+                <button onclick="switchTab('flashcard')" id="tab-btn-flashcard" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🎴 Flashcard</button>
+                <button onclick="switchTab('sap-xep')" id="tab-btn-sap-xep" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🧩 Sắp Xếp Câu</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full h-full relative bg-slate-200 overflow-hidden">
+        <!-- Tab Kho Từ Vựng -->
+        <div id="tab-repo" class="tab-content active bg-slate-100 p-6 overflow-y-auto">
+            <div class="max-w-5xl mx-auto space-y-6">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">🗂️ Quản Lý Kho Từ Vựng Dùng Chung</h2>
+                        <p class="text-xs text-slate-500">Bấm <b>"🚀 Áp Dụng Kho Này"</b> để đẩy từ vựng sang tất cả các bài tập lẻ.</p>
+                    </div>
+                    <button onclick="addNewRepo()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow">➕ Thêm Kho Mới</button>
+                </div>
+                <div id="repoCardsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- iframe đường dẫn tương đối để tương thích GitHub Pages -->
+        <iframe id="tab-pinyin" class="tab-content" src="./tim-pinyin.html"></iframe>
+        <iframe id="tab-muc-tieu" class="tab-content" src="./tim-tu-muc-tieu.html"></iframe>
+        <iframe id="tab-noi-tu" class="tab-content" src="./noi-tu.html"></iframe>
+        <iframe id="tab-flashcard" class="tab-content" src="./Tao-FC.html"></iframe>
+        <iframe id="tab-sap-xep" class="tab-content" src="./sap-xep-cau.html"></iframe>
+    </main>
+
+    <script>
+        const DEFAULT_REPOS = [
+            { id: 'hsk1', name: 'HSK 1 - Cơ Bản', vocab: "你好\n老师\n学生\n中国\n越南\n朋友\n再见\n谢谢\n高兴\n学习" },
+            { id: 'hsk2', name: 'HSK 2 - Động Từ', vocab: "看:kàn\n听:tīng\n读:dú\n写:xiě\n走:zǒu\n跑:pǎo\n跳:tiào\n喝:hē\n吃:chī\n玩:wán" },
+            { id: 'sentences', name: 'Mẫu Câu Sắp Xếp', vocab: "花园里有一只漂亮的蝴蝶\n消灭所有怪物后才能过关\n我不瞒 me 你说，这件事情很简单" }
+        ];
+
+        let repositories = JSON.parse(localStorage.getItem('zh_vocab_repos')) || DEFAULT_REPOS;
+        let activeRepoId = localStorage.getItem('zh_active_repo_id') || repositories[0].id;
+
+        function saveState() {
+            localStorage.setItem('zh_vocab_repos', JSON.stringify(repositories));
+            localStorage.setItem('zh_active_repo_id', activeRepoId);
+            const curRepo = repositories.find(r => r.id === activeRepoId);
+            if (curRepo) {
+                localStorage.setItem('zh_active_vocab', curRepo.vocab);
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100");
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`tab-btn-${tabId}`).className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200";
+
+            if (tabId === 'repo') {
+                renderRepoManager();
+            } else {
+                // Reload lại iframe khi bật tab để bắt buộc nhận từ vựng mới nhất
+                const iframe = document.getElementById(`tab-${tabId}`);
+                if (iframe) iframe.src = iframe.src;
+            }
+        }
+
+        function renderRepoManager() {
+            const listEl = document.getElementById('repoCardsList');
+            listEl.innerHTML = repositories.map(r => `
+                <div class="bg-white border ${r.id === activeRepoId ? 'border-2 border-blue-600 shadow-md' : 'border-slate-300'} rounded-xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2 gap-2">
+                            <h3 class="font-bold text-slate-800 text-sm truncate flex-1" title="${r.name}">${r.name}</h3>
+                            <div class="flex items-center gap-1">
+                                <button onclick="renameRepo('${r.id}')" title="Sửa tên kho" class="p-1 hover:bg-slate-100 text-slate-600 rounded text-xs">✏️</button>
+                                ${repositories.length > 1 ? `<button onclick="deleteRepo('${r.id}')" title="Xóa kho" class="p-1 hover:bg-red-50 text-red-500 rounded text-xs">🗑</button>` : ''}
+                            </div>
+                        </div>
+                        ${r.id === activeRepoId ? '<span class="inline-block mb-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ĐANG DÙNG</span>' : ''}
+                        <textarea onchange="updateRepoVocab('${r.id}', this.value)" class="w-full h-28 p-2 text-xs border border-slate-300 rounded resize-none focus:outline-none focus:border-blue-500">${r.vocab}</textarea>
+                    </div>
+                    <button onclick="applyRepo('${r.id}')" class="mt-3 w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">🚀 Áp Dụng Kho Này</button>
+                </div>
+            `).join('');
+        }
+
+        function updateRepoVocab(id, val) {
+            const r = repositories.find(item => item.id === id);
+            if (r) { r.vocab = val; saveState(); }
+        }
+
+        function renameRepo(id) {
+            const r = repositories.find(item => item.id === id);
+            if (!r) return;
+            const newName = prompt("Nhập tên mới cho kho từ vựng:", r.name);
+            if (newName && newName.trim() !== '') {
+                r.name = newName.trim();
+                saveState();
+                renderRepoManager();
+            }
+        }
+
+        function deleteRepo(id) {
+            if (repositories.length <= 1) {
+                alert("Bạn không thể xóa kho từ vựng cuối cùng!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa kho từ vựng này?")) {
+                repositories = repositories.filter(r => r.id !== id);
+                if (activeRepoId === id) {
+                    activeRepoId = repositories[0].id;
+                }
+                saveState();
+                renderRepoManager();
+            }
+        }
+
+        function applyRepo(id) {
+            activeRepoId = id;
+            saveState();
+            renderRepoManager();
+            alert("✅ Đã áp dụng kho từ vựng! Chuyển sang các tab bài tập để xem kết quả.");
+        }
+
+        function addNewRepo() {
+            const name = prompt("Nhập tên kho mới:");
+            if (!name || name.trim() === '') return;
+            const newId = 'repo_' + Date.now();
+            repositories.push({ id: newId, name: name.trim(), vocab: "你好\n谢谢" });
+            activeRepoId = newId;
+            saveState();
+            renderRepoManager();
+        }
+
+        saveState();
+        renderRepoManager();
+    </script>
+</body>
+</html>
